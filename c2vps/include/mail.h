@@ -5,7 +5,7 @@
 
 #include "c2vps.h"
 
-#define MAIL_ACC "pnackp@gmail.com"
-#define MAIL_APW "tuxk fbpw lftz hvmj "
+#define MAIL_ACC ""
+#define MAIL_APW ""
 
 void send_mail(const std::string& email, const std::string& username , std::function<void(drogon::HttpResponsePtr)>callback);
