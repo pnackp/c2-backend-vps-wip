@@ -14,6 +14,12 @@ std::string hash_password(const std::string& password) {
 	return std::string(hash);
 }
 
+bool verify_pw(const std::string& password, const std::string& passwordhash) {
+	return crypto_pwhash_str_verify(passwordhash.c_str(),
+		password.c_str(),
+		password.size()) == 0;
+}
+
 std::string token(const std::string& email, const std::string& username) {
 	try {
 		auto token = jwt::builder<jwt::default_clock, jwt::traits::nlohmann_json>{ jwt::default_clock{} }
