@@ -10,7 +10,7 @@
 std::string hash_password(const std::string& password);
 std::string token(const std::string& email, const std::string& username);
 
-
+bool verify_pw(const std::string& password, const std::string& passwordhash);
 
 
 
