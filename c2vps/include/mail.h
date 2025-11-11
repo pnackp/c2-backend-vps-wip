@@ -8,4 +8,6 @@
 #define MAIL_ACC ""
 #define MAIL_APW ""
 
-void send_mail(const std::string& email, const std::string& username , std::function<void(drogon::HttpResponsePtr)>callback);
+void send_mail(const std::string& email,
+    const std::string& username,
+    std::shared_ptr<std::function<void(const drogon::HttpResponsePtr&)>> cb);
