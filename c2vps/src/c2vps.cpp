@@ -3,7 +3,7 @@
 #include "c2vps.h"
 
 using namespace Json;
-
+using namespace drogon;
 //-func check special char?
 auto is_blank = [](const std::string& s) {
 	for (char c : s) {
@@ -37,31 +37,33 @@ void user_regis(const drogon::HttpRequestPtr& req, std::function<void(const drog
 		callback(json_parse("error", "missing argruments", drogon::k400BadRequest));
 		return;
 	}
-	const std::string username = (*payload)["username"].as<std::string>();
-	const std::string password = (*payload)["password"].as<std::string>();
-	const std::string email = (*payload)["email"].as<std::string>();
+
+	std::string username = std::move((*payload)["username"].as<std::string>());
+	std::string password = std::move((*payload)["password"].as<std::string>());
+	std::string email = std::move((*payload)["email"].as<std::string>());
+
 	if (is_blank(username) || is_blank(password) || is_blank(email)) {
 		callback(json_parse("error", "Missing Arguments", drogon::k400BadRequest));
 		return;
 	}
-	user_insert(username, password, email,[callback](const drogon::HttpResponsePtr json) {
-		callback(json);
-	});
+	user_insert(username, password, email, std::move(callback));
 	return;
 }
 
-void user_login(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
+void login(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
 	const std::shared_ptr<Value> payload = req->getJsonObject();
 	if (!payload->isMember("username") || !payload->isMember("password")) {
 		callback(json_parse("error", "missing argruments", drogon::k400BadRequest));
 		return;
 	}
-	const std::string username = (*payload)["username"].as<std::string>();
-	const std::string password = (*payload)["password"].as<std::string>();
+	std::string username = (*payload)["username"].as<std::string>();
+	std::string password = (*payload)["password"].as<std::string>();
 	if (is_blank(username) || is_blank(password)) {
 		callback(json_parse("error", "Missing Arguments", drogon::k400BadRequest));
 		return;
 	}
+	user_login(username, password, std::move(callback));
+	return;
 }
 
 int main() {
@@ -73,7 +75,7 @@ int main() {
 	}
 	drogon::app().registerHandler("/api/status", &status, { drogon::Get })
 		.registerHandler("/api/register", &user_regis, { drogon::Post })
-		.registerHandler("/api/login",&user_login,{drogon::Post});
+		.registerHandler("/api/login", &login, { drogon::Post });
 	drogon::app().run();
 	return 0;
 }
