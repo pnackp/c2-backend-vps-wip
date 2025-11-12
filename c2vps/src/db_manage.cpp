@@ -25,7 +25,7 @@ void user_insert( std::string& username,  std::string& password, std::string& em
 				(*cb)(res);
 				return;
 			}
-			send_mail(email, username, cb);
+			std::future _ = std::async(std::launch::async, send_mail, email, username, cb);
 		},
 		[callback , cb](const DrogonDbException& e) {
 			auto res = json_parse("error", "database insert failed", drogon::k500InternalServerError);
@@ -61,7 +61,20 @@ void user_login(std::string& username, std::string& password, std::function<void
 				(*cb)(res);
 				return;
 			}
-			res = json_parse("success", "login success", drogon::k200OK);
+			//
+			auto resp = drogon::HttpResponse::newHttpResponse();
+
+			std::string jwtToken = token("", username);
+			drogon::Cookie myCookie("login_cookie", jwtToken);
+			myCookie.setDomain("c2vps.com");
+			myCookie.setPath("/");
+			myCookie.setMaxAge(3600);
+			myCookie.setHttpOnly(true);
+			myCookie.setSecure(true);
+
+			resp->addCookie(myCookie);
+			resp->setBody("Login success!");
+			resp->setStatusCode(drogon::k200OK);
 			(*cb)(res);
 		},
 		[cb](const DrogonDbException& e) {
