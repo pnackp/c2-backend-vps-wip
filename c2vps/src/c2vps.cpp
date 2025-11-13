@@ -96,6 +96,31 @@ int main() {
 	catch (const std::exception& e) {
 		std::cout << e.what() << std::endl;
 	}
+
+	if (!std::filesystem::exists("./log")) {
+		std::filesystem::create_directories("./log"); 
+	}
+
+	drogon::app().registerPreRoutingAdvice([](const drogon::HttpRequestPtr& req) {
+		auto ip = req->getPeerAddr().toIp();
+		auto path = req->path();
+
+		if (!std::filesystem::exists("./log")) {
+			std::filesystem::create_directories("./log");
+		}
+
+		std::ofstream log("./log/requests.log", std::ios::app);
+		if (!log.is_open()) {
+			std::cerr << "[ERROR] cannot open ./log/requests.log\n";
+		}
+		else {
+			log << "[" << trantor::Date::now().toFormattedString(false) << "] "
+				<< "IP: " << ip << "  Path: " << path << std::endl;
+		}
+		std::cout << "[LOG] " << ip << " -> " << path << std::endl;
+		});
+
+
 	drogon::app().registerHandler("/api/status", &status, { drogon::Get , "Check_cookie"})
 		.registerHandler("/api/register", &user_regis, { drogon::Post })
 		.registerHandler("/api/login", &login, { drogon::Post });

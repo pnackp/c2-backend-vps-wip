@@ -8,6 +8,9 @@
 #include <drogon/HttpFilter.h>
 #include "db_manage.h"
 
+#include <filesystem>
+#include <fstream>
+
 #define COOKIES_NAME "login_cookies"
 
 drogon::HttpResponsePtr json_parse(const std::string& status, const std::string& message, const drogon::HttpStatusCode& code);
