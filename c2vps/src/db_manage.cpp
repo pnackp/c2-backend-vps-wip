@@ -39,48 +39,51 @@ void user_insert( std::string& username,  std::string& password, std::string& em
 void user_login(std::string& username, std::string& password, std::function<void(drogon::HttpResponsePtr&)>&& callback) {
 	auto clients = drogon::app().getDbClient();
 	auto cb = std::make_shared<std::function<void(drogon::HttpResponsePtr&)>>(std::move(callback));
+	try {
+		clients->execSqlAsync(
+			"SELECT password_hash , is_email_verify FROM users WHERE username=$1",
+			[clients, password = std::move(password), username = std::move(username), cb](const Result& result) {
+				drogon::HttpResponsePtr res;
+				if (result.empty()) {
+					res = json_parse("error", "Incorrect username or password", drogon::k400BadRequest);
+					(*cb)(res);
+					return;
+				}
+				const std::string hash = result[0]["password_hash"].as<std::string>();
+				const bool verified = result[0]["is_email_verify"].as<bool>();
+				if (!verify_pw(password, hash)) {
+					res = json_parse("error", "Incorrect username or password", drogon::k400BadRequest);
+					(*cb)(res);
+					return;
+				}
+				if (!verified) {
+					res = json_parse("error", "Email not verified", drogon::k400BadRequest);
+					(*cb)(res);
+					return;
+				}
+				//
+			    res = drogon::HttpResponse::newHttpResponse();
 
-	clients->execSqlAsync(
-		"SELECT password_hash , is_email_verify FROM users WHERE username=$1",
-		[clients, password = std::move(password), username = std::move(username), cb](const Result& result) {
-			drogon::HttpResponsePtr res;
-			if (result.empty()) {
-				res = json_parse("error", "Incorrect username or password", drogon::k400BadRequest);
+				std::string jwtToken = token(SECRET_KEY, username);
+				drogon::Cookie myCookie(COOKIES_NAME, jwtToken);
+				myCookie.setPath("/");
+				//myCookie.setDomain()
+				myCookie.setMaxAge(3600);
+				myCookie.setHttpOnly(true);
+				myCookie.setSecure(false);
+				res->addCookie(myCookie);
+				res->setBody("Login success!");
+				res->setStatusCode(drogon::k200OK);
 				(*cb)(res);
-				return;
-			}
-			const std::string hash = result[0]["password_hash"].as<std::string>();
-			const bool verified = result[0]["is_email_verify"].as<bool>();
-			if (!verify_pw(password, hash)) {
-				res = json_parse("error", "Incorrect username or password", drogon::k400BadRequest);
+			},
+			[cb](const DrogonDbException& e) {
+				auto res = json_parse("error", "db went wrong", drogon::k500InternalServerError);
 				(*cb)(res);
-				return;
-			}
-			if (!verified) {
-				res = json_parse("error", "Email not verified", drogon::k400BadRequest);
-				(*cb)(res);
-				return;
-			}
-			//
-			auto resp = drogon::HttpResponse::newHttpResponse();
-
-			std::string jwtToken = token("", username);
-			drogon::Cookie myCookie("login_cookie", jwtToken);
-			myCookie.setDomain("c2vps.com");
-			myCookie.setPath("/");
-			myCookie.setMaxAge(3600);
-			myCookie.setHttpOnly(true);
-			myCookie.setSecure(true);
-
-			resp->addCookie(myCookie);
-			resp->setBody("Login success!");
-			resp->setStatusCode(drogon::k200OK);
-			(*cb)(res);
-		},
-		[cb](const DrogonDbException& e) {
-			auto res = json_parse("error", "db went wrong", drogon::k500InternalServerError);
-			(*cb)(res);
-		},
-		username
-	);
+			},
+			username
+		);
+	}
+	catch (std::exception& e) {
+		std::cout << e.what() << std::endl;
+	}
 }

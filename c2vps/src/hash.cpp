@@ -33,3 +33,23 @@ std::string token(const std::string& email, const std::string& username) {
 		return "";
 	}
 }
+
+void decode_token(const std::string& token) {
+	try {
+		auto verifier = jwt::verify<jwt::default_clock, jwt::traits::nlohmann_json>(jwt::default_clock{})
+			.allow_algorithm(jwt::algorithm::hs256{ SECRET_KEY })
+			.with_issuer(SET_ISSUER);
+
+		auto decoded = jwt::decoded_jwt<jwt::traits::nlohmann_json>(token);
+		verifier.verify(decoded);
+
+		std::string email = decoded.get_payload_claim("email").as_string();
+		std::string username = decoded.get_payload_claim("username").as_string();
+
+		std::cout << "Email: " << email << "\n";
+		std::cout << "Username: " << username << "\n";
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Invalid token: " << e.what() << std::endl;
+	}
+}
