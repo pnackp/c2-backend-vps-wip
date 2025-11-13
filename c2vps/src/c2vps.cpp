@@ -4,6 +4,29 @@
 
 using namespace Json;
 using namespace drogon;
+
+class Check_cookie : public drogon::HttpFilter<Check_cookie> {
+public:
+	void doFilter(const HttpRequestPtr& req,
+		FilterCallback&& fcb,
+		FilterChainCallback&& fccb) override {
+		std::string cookie = req->getCookie(COOKIES_NAME);
+		if (cookie.empty()) {
+			Json::Value json;
+			json["status"] = "error";
+			json["message"] = "Missing authentication token";
+			auto resp = drogon::HttpResponse::newHttpJsonResponse(json);
+			resp->setStatusCode(k401Unauthorized);
+			fcb(resp);
+			return;
+		}
+		else{
+			decode_token(cookie); // not finish
+		}
+	}
+};
+
+
 //-func check special char?
 auto is_blank = [](const std::string& s) {
 	for (char c : s) {
@@ -52,7 +75,7 @@ void user_regis(const drogon::HttpRequestPtr& req, std::function<void(const drog
 
 void login(const drogon::HttpRequestPtr& req, std::function<void(const drogon::HttpResponsePtr&)>&& callback) {
 	const std::shared_ptr<Value> payload = req->getJsonObject();
-	if (!payload->isMember("username") || !payload->isMember("password")) {
+	if (!payload || !payload->isMember("username") || !payload->isMember("password")) {
 		callback(json_parse("error", "missing argruments", drogon::k400BadRequest));
 		return;
 	}
@@ -73,7 +96,7 @@ int main() {
 	catch (const std::exception& e) {
 		std::cout << e.what() << std::endl;
 	}
-	drogon::app().registerHandler("/api/status", &status, { drogon::Get })
+	drogon::app().registerHandler("/api/status", &status, { drogon::Get , "Check_cookie"})
 		.registerHandler("/api/register", &user_regis, { drogon::Post })
 		.registerHandler("/api/login", &login, { drogon::Post });
 	drogon::app().run();
